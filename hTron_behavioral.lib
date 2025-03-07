@@ -81,10 +81,10 @@
 * Thermal conductivity (W/m^2 K) of substrate interface
 .PARAM hc = 50k
 
-* Sheet inductance (H/square)
+* Sheet inductance (pH/square)
 .PARAM inductivity = {1.38p*sheetRes/Tc}
 
-* Channel inductance (H)
+* Channel inductance (pH)
 .PARAM Lind_c = {inductivity*sq_c}
 
 * Characteristic velocity (m/s)
