@@ -116,7 +116,7 @@
 * Temperature at which the channel switched (i.e at which Isw(Tch)=Ich_bias_on)
 .PARAM T_switch = Tc*(1-(Ich_bias_on/(Jc_0K*thick_c*width_c))**(1/2.1))**(1/3)
 * Heater current needed to reach TCh = T_switch
-.PARAM Ih_switch = ( (T_switch**4 - Tsub**4)/(Tc**4-Tsub**4))**(1/eta)*Ih_supp
+.PARAM Ih_switch = max(1p, ( (T_switch**4 - Tsub**4)/(Tc**4-Tsub**4))**(1/eta)*Ih_supp)
 * RC time constant that makes the filtered heater current reach Ih_switch in time tau_on
 .PARAM tau_thermal = - tau_on/ln(1- (Ih_switch/Ih_bias_on) )
 
@@ -139,13 +139,15 @@ R_heater heater_p heater_n {R_h}
 ** S/C SENSE SUBCIRCUIT **
 **************************************************
 * The sub-circuit is split into two sources for stability
+* V(N_c_Isw_state) is 1 if the current in channel overcomes Isw, 0 otherwise
+
 B_c_Isw_state N_c_Isw_state 0
 + V = stp(
 +     abs(i(Lc)) * scale
 +     - V(Meas_Isw) * scale
 + )
-  * V(N_c_Isw_state) is 1 if the current in channel overcomes Isw, 0 otherwise
 
+* V(N_c_state) is 0 if wire s/c, 1 if normal
 B_c_state N_c_state 0
 + V = buf(
 +     V(N_c_Isw_state) 
@@ -157,7 +159,6 @@ B_c_state N_c_state 0
 +         - V(Meas_Ihs) * scale
 +     ))
 + )
-  * V(N_c_state) is 0 if wire s/c, 1 if normal
 
 **************************************************
 ** HOTSPOT GROWTH INTEGRATOR SUBCIRCUIT **
