@@ -33,122 +33,215 @@
 * pulse.
 
 
+
+**************************************************
+** PARAMETERS AND MODEL DEFINITION **
+**************************************************
+
 .subckt hTron_behav heater_p heater_n drain source
-+ width_c=1u, width_h=0.5u, thick_c=23.6n, length_c=14u,
-+ sheetRes=77.9, R_h = 50,
-+ Tc=12.5, Tsub=4.2,
-+ eta=3, Jsw_tilde=70G, Isupp_tilde=1024u, Jconstr=100G,
-+ tau_on=7.74n, ICh_bias_on=827.8u, Ih_bias_on=747.2u
++ width_c=1u      width_h=0.5u          thick_c=23.6n
++ length_c=14u    sheetRes=77.9         R_h=50
++ Tc=12.5         Tsub=4.2              eta=3
++ Jsw_tilde=70G   Isupp_tilde=1024u     Jconstr=100G
++ tau_on=7.74n    ICh_bias_on=827.8u    Ih_bias_on=747.2u
+*   width_c - Channel width (m)
+*   width_h - Heater width (m)
+*   thick_c - Channel thickness (m)
+*   length_c - Channel length (m)
+*   sheetRes - Sheet resistance (Ohms)
+*   R_h - Heater resistance (Ohms)
+*   Tc - Critical temperature (K)
+*   Tsub - Substrate temperature (K)
+*   eta - Efficiency factor (2 or 3)
+*   Jsw_tilde - Switching current density (A/m^2)
+*   Isupp_tilde - Enable suppression current density (A)
+*   Jconstr - Constriction current density (100G)
+*   tau_on - Turn-on time (7.74n)
+*   ICh_bias_on - Channel bias current when on (827.8u)
+*   Ih_bias_on - Heater bias current when on (747.2u)
 
-	* width_c/width_h: Channel/heater width (m)
-	* thick_c: NbN thickness (m)
-	* length_c: Channel length (m)
-	* R_h: Heater resistance (Ohm)
-	* Tc/Tsub: Critical/substrate temperature (K)
-	* eta: dimensionless exponent (only eta=2 or 3 are valid)
-	* Jsw_tilde and Isupp_tilde: respectively y and x-intercept of the linear fit
-	* tau_on: measured activation delay, with ICh_bias_on and Ih_bias_on the bias point
+**************************************************
+** PARAMETERS **
+**************************************************
+* Number of squares in superconducting channel
+.PARAM sq_c=length_c/width_c
 
+* Normal state resistance
+.PARAM Rnorm_c = sheetRes*length_c/width_c
 
-** PARAMETERS DEFINITION **
-* Dimensions
-.param sq_c=length_c/width_c
-	* Nb of squares
-.param Rnorm_c = sheetRes*length_c/width_c
-	* Normal resistance (Ohm)
+* Resistivity (Ohm m)
+.PARAM rho = sheetRes*thick_c
 
-* Thermal Parameters
+* Thermal conductivity (W/m K)
 .PARAM kappa = 0.108
-  * thermal conductivity W/m K
+
+* Heat capacity (J/m^3 K)
 .PARAM heatCapacity_c = 4400
-  * heat capacity J/m^3 K
+
+* Thermal conductivity (W/m^2 K) of substrate interface
 .PARAM hc = 50k
-  * hc is the thermal conductivity
-  * of the surface, units of W/m^2 K
 
-*Electrical/Superconducting Parameters
+* Sheet inductance (H/square)
 .PARAM inductivity = {1.38p*sheetRes/Tc}
-  * Units: H/square
+
+* Channel inductance (H)
 .PARAM Lind_c = {inductivity*sq_c}
-  * Channel inductance. Another definition: .param Lind_c=500n and .param length_c=width_c*Lind_c/inductivity
+
+* Characteristic velocity (m/s)
 .PARAM vo={1*sqrt(hc*kappa/thick_c)/heatCapacity_c}
-  * vo is the characteristic velocity
-.param Isw_sub = Isw(Tsub)
-  * Switching current at substrate temp (used in Lc)
-.param psi = sheetRes*(Isw_sub/width_c)**2/(hc*(Tc-Tsub))
-  * Stekly parameter
-.param Ir = sqrt(2/psi)*Isw_sub
-  * Retrapping current
 
-* Unitless Parameters
-.PARAM delta={0.01}
-  * a small offset value for avoiding
-  * singularity in hotspot velocity
+* Switching current at substrate temperature (A)
+.PARAM Isw_sub = Isw(Tsub)
 
+* Stekly parameter (unitless)
+.PARAM psi = rho*(Isw_sub)**2/(hc*(width_c**2)*thick_c*(Tc-Tsub))
 
-** HEATER SUB-CIRCUIT **
+* Retrapping current (A)
+.PARAM Ir = sqrt(2/psi)*Isw_sub
+
+* Compute Ih_supp and Jc_0K (valid values of eta are 2 or 3)
+.PARAM alpha = if(eta == 2, 0.88, 0.7)
+.PARAM beta  = if(eta == 2, 1.25, 1.12)
+
+* Ideal critical current density => At 0K
+.PARAM Jc_0K = alpha * Jsw_tilde / (1 - (Tsub / Tc)**3)**2.1
+  * Jsw(ih=0) is given by alpha * Jsw_tilde
+
+* Suppressing current
+.PARAM Ih_supp = beta * Isupp_tilde
+
+* Determine the nanowire temperature from the heater current
+.PARAM a = (Tc**4 - Tsub**4) / Ih_supp**eta
+
+* Temperature at which the channel switched (i.e at which Isw(Tch)=Ich_bias_on)
+.PARAM T_switch = Tc*(1-(Ich_bias_on/(Jc_0K*thick_c*width_c))**(1/2.1))**(1/3)
+* Heater current needed to reach TCh = T_switch
+.PARAM Ih_switch = ( (T_switch**4 - Tsub**4)/(Tc**4-Tsub**4))**(1/eta)*Ih_supp
+* RC time constant that makes the filtered heater current reach Ih_switch in time tau_on
+.PARAM tau_thermal = - tau_on/ln(1- (Ih_switch/Ih_bias_on) )
+
+* a small offset for stability
+.PARAM delta=0.01
+  
+* scaling factor for stability
+.PARAM scale=1e10
+  
+
+**************************************************
+** HEATER SUBCIRCUIT **
+**************************************************
 * Heater resistor between the two ports
 R_heater heater_p heater_n {R_h}
   * Used to sense the heater current
 
+
+**************************************************
 ** S/C SENSE SUBCIRCUIT **
+**************************************************
 * The sub-circuit is split into two sources for stability
-* The *1e10 factor helps defining the source even when the values are small
-B_c_Isw_state N_c_Isw_state 0 V=stp(abs(i(Lc))*1e10-V(Meas_Isw)*1e10)
+B_c_Isw_state N_c_Isw_state 0
++ V = stp(
++     abs(i(Lc)) * scale
++     - V(Meas_Isw) * scale
++ )
   * V(N_c_Isw_state) is 1 if the current in channel overcomes Isw, 0 otherwise
-B_c_state N_c_state 0 V=buf(V(N_c_Isw_state) | ((V(N_c_hotspot)>0) & stp(abs(i(Lc))*1e10-V(Meas_Ihs)*1e10)))
-  * v(N_c_state) is 0 if wire s/c, 1 if normal
 
+B_c_state N_c_state 0
++ V = buf(
++     V(N_c_Isw_state) 
++     | 
++     ((V(N_c_hotspot) > 0) 
++     & 
++     stp(
++         abs(i(Lc)) * scale 
++         - V(Meas_Ihs) * scale
++     ))
++ )
+  * V(N_c_state) is 0 if wire s/c, 1 if normal
+
+**************************************************
 ** HOTSPOT GROWTH INTEGRATOR SUBCIRCUIT **
-B_c_hotspot N_c_hotspot 0 V=sdt(if(V(N_c_state) & V(N_c_hotspot)<Rnorm_c,
-+ (2*sheetRes*vo/width_c)*(psi*(i(Lc)/V(Meas_Isw))**2-2)/
-+ ((sqrt(((psi*(i(Lc)/V(Meas_Isw))**2-1)+abs(psi*(i(Lc)/V(Meas_Isw))**2-1))/2)+{delta}))
-+ ,0),0, V(N_c_state)<0.5)
-  * V(N_c_hotspot) is the hotspot resistance
+**************************************************
+B_c_hotspot N_c_hotspot 0 V = sdt(
++   if(
++       V(N_c_state) & (V(N_c_hotspot) < Rnorm_c),  
++       ( 
++           (2 * sheetRes * vo / width_c) * 
++           (
++               psi * (i(Lc) / V(Meas_Isw))**2 - 2
++           ) /
++           (
++               sqrt(
++                   (
++                       (psi * (i(Lc) / V(Meas_Isw))**2 - 1) + 
++                       abs(psi * (i(Lc) / V(Meas_Isw))**2 - 1)
++                   ) / 2
++               ) + {delta}
++           )
++       ),
++       0
++   ), 
++   0, 
++   V(N_c_state) < 0.5
++ )
 
-** TRANSIENT BEHAVIOR: heat transfer sub-circuit
-* Temperature at which the channel switched (i.e at which Isw(Tch)=Ich_bias_on)
-.param T_switch = Tc*(1-(Ich_bias_on/(Jc_0K*thick_c*width_c))**(1/2.1))**(1/3)
-* Heater current needed to reach TCh = T_switch
-.param Ih_switch = ( (T_switch**4 - Tsub**4)/(Tc**4-Tsub**4))**(1/eta)*Ih_supp
-* RC time constant that makes the filtered heater current reach Ih_switch in time tau_on
-.param tau_thermal = - tau_on/ln(1- (Ih_switch/Ih_bias_on) )
+**************************************************
+** TRANSIENT BEHAVIOR: HEAT TRANSFER SUB-CIRCUIT **
+**************************************************
+
 * Lumped-elements circuit, mimics the heat transfer
-B_heat N001 0 V=I(R_heater)
+B_heat N001 0 
++ V = I(R_heater)
+
 R1 heat N001 1
 C1 heat 0 {tau_thermal}
   * {tau_thermal} makes sure the activation delay is {tau_on} at the bias point [Ich_bias_on, Ih_bias_on]
   * V(heat) is the "filtered" output node of the subcircuit
 
-** STATIC BEHAVIOR: parameters and fitting **
-* Compute Ih_supp and Jc_0K (valid values of eta are 2 or 3)
-.param alpha = if(eta==2, 0.88, 0.7)
-.param beta  = if(eta==2, 1.25, 1.12)
-* Ideal critical current density => At 0K
-.param Jc_0K = alpha*Jsw_tilde/(1-(Tsub/Tc)**3)**2.1
-  * alpha*Jsw_tilde is Jsw(ih=0)
-* Suppressing current
-.param Ih_supp = beta*Isupp_tilde
-* Determine the nanowire temperature from the heater current
-.param a = (Tc**4 - Tsub**4)/Ih_supp**eta
-.func TCh(I) (a*I**eta+Tsub**4)**0.25
-* Determine the switching current from the nanowire temperature
-.func Isw(T) Jc_0K*width_c*thick_c*(1-(T/Tc)**3)**2.1
 
+**************************************************
+** STATIC BEHAVIOR: PARAMETERS AND FITTING **
+**************************************************
+
+.func TCh(I) 
++ (a * I**eta + Tsub**4) ** 0.25
+
+* Determine the switching current from the nanowire temperature
+.func Isw(T) 
++ Jc_0K * width_c * thick_c * (1 - (T / Tc)**3) ** 2.1
+
+
+**************************************************
 ** BEHAVIORAL SOURCES **
+**************************************************
+
 * Used to get values of functions at every time point
-B1 Meas_TCh 0 V=TCh(V(heat))
+B1 Meas_TCh 0 
++ V = TCh(V(heat))
   * Channel temperature
-B2 Meas_Isw 0 V=min(Jconstr*width_c*thick_c , Isw(V(Meas_TCh)))
+
+B2 Meas_Isw 0 
++ V = min(Jconstr * width_c * thick_c , Isw(V(Meas_TCh)))
   * Channel switching current, with the possibility of adding a constriction plateau
+
 * Replace 1 by 0.99 in B3 to improve stability in large circuits
-B3 Meas_Ihs 0 V=min(Ir , 1*V(Meas_Isw))
+B3 Meas_Ihs 0 
++ V = min(Ir , 1 * V(Meas_Isw))
   * Retrapping current
 
+
+**************************************************
 ** MAIN NANOWIRE CIRCUIT **
-Lc drain N_hs Flux={Lind_c}*x/(2.0*cos(0.67*asin(0.6*abs(x)/Isw_sub))-1) Rser=1e-100 Rpar=1e6
+**************************************************
+
+Lc drain N_hs 
++ Flux = {Lind_c} * x / (2.0 * cos(0.67 * asin(0.6 * abs(x) / Isw_sub)) - 1) 
++ Rser = 1e-100 
++ Rpar = 1e6
   * Channel inductor
-B_Rhs N_hs source V=V(N_c_hotspot)*i(B_Rhs)
+
+B_Rhs N_hs source 
++ V = V(N_c_hotspot) * i(B_Rhs)
   * V(N_c_hotspot) is the hotspot resistance
 
 
