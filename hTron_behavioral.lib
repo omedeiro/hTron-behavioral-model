@@ -55,10 +55,10 @@
 *   eta - Efficiency factor (2 or 3)
 *   Jsw_tilde - Switching current density (A/m^2)
 *   Isupp_tilde - Enable suppression current density (A)
-*   Jconstr - Constriction current density (100G)
-*   tau_on - Turn-on time (7.74n)
-*   ICh_bias_on - Channel bias current when on (827.8u)
-*   Ih_bias_on - Heater bias current when on (747.2u)
+*   Jconstr - Constriction current density (A/m^2)
+*   tau_on - Turn-on time (s)
+*   ICh_bias_on - Channel bias current when on (A)
+*   Ih_bias_on - Heater bias current when on (A)
 
 **************************************************
 ** PARAMETERS **
