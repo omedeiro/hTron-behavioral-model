@@ -91,13 +91,13 @@
 .PARAM vo={1*sqrt(hc*kappa/thick_c)/heatCapacity_c}
 
 * Switching current at substrate temperature (A)
-.PARAM Isw_sub = Isw(Tsub)
+.PARAM Isw_Tsub = Isw(Tsub)
 
 * Stekly parameter (unitless)
-.PARAM psi = rho*(Isw_sub)**2/(hc*(width_c**2)*thick_c*(Tc-Tsub))
+.PARAM psi = rho*(Isw_Tsub)**2/(hc*(width_c**2)*thick_c*(Tc-Tsub))
 
 * Retrapping current (A)
-.PARAM Ir = sqrt(2/psi)*Isw_sub
+.PARAM Ir = sqrt(2/psi)*Isw_Tsub
 
 * Compute Ih_supp and Jc_0K (valid values of eta are 2 or 3)
 .PARAM alpha = if(eta == 2, 0.88, 0.7)
@@ -236,7 +236,7 @@ B3 Meas_Ihs 0
 **************************************************
 
 Lc drain N_hs 
-+ Flux = {Lind_c} * x / (2.0 * cos(0.67 * asin(0.6 * abs(x) / Isw_sub)) - 1) 
++ Flux = {Lind_c} * x / (2.0 * cos(0.67 * asin(0.6 * abs(x) / Isw_Tsub)) - 1) 
 + Rser = 1e-100 
 + Rpar = 1e6
   * Channel inductor
