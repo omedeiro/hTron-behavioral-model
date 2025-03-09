@@ -1,3 +1,6 @@
 
 *.log
 
+*.asc
+*.asy
+*.raw
