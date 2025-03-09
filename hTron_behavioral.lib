@@ -38,12 +38,15 @@
 ** PARAMETERS AND MODEL DEFINITION **
 **************************************************
 
-.subckt hTron_behav heater_p heater_n drain source
-+ width_c=1u      width_h=0.5u          thick_c=23.6n
-+ length_c=14u    sheetRes=77.9         R_h=50
-+ Tc=12.5         Tsub=4.2              eta=3
-+ Jsw_tilde=70G   Isupp_tilde=1024u     Jconstr=100G
-+ tau_on=7.74n    ICh_bias_on=827.8u    Ih_bias_on=747.2u
+.subckt hTron_behav heater_p heater_n drain source Meas_TCh Meas_Isw Meas_Ihs
++ const_width=1u              heater_width=0.5u      
++ const_thickness=23.6n       const_length=14u      
++ sheet_resistance=77.9       heater_resistance=50  
++ critical_temp=12.5          substrate_temp=4.2    
++ eta=3                       Jsw_tilde=70G         
++ Isupp_tilde=1024u           Jconstr=100G          
++ tau_on=7.74n                ICh_bias_on=827.8u    
++ Ih_bias_on=747.2u
 *   width_c - Channel width (m)
 *   width_h - Heater width (m)
 *   thick_c - Channel thickness (m)
@@ -163,25 +166,17 @@ B_c_state N_c_state 0
 **************************************************
 ** HOTSPOT GROWTH INTEGRATOR SUBCIRCUIT **
 **************************************************
+R_enable N_enable 0 1G
+B_enable N_enable 0 V = if(V(N_c_state) & (V(N_c_hotspot) < Rnorm_c), 1, 0)
+
+BI_ratio N_ratio 0 V = i(Lc) / V(Meas_Isw)
+B_sqrt_arg N_sqrt_arg 0 V = psi * V(N_ratio)**2 - 1
+B_sqrt_approx N_sqrt_approx 0 V = (V(N_sqrt_arg) + delta) / 2
+
 B_c_hotspot N_c_hotspot 0 V = sdt(
-+   if(
-+       V(N_c_state) & (V(N_c_hotspot) < Rnorm_c),  
-+       ( 
-+           (2 * sheetRes * vo / width_c) * 
-+           (
-+               psi * (i(Lc) / V(Meas_Isw))**2 - 2
-+           ) /
-+           (
-+               sqrt(
-+                   (
-+                       (psi * (i(Lc) / V(Meas_Isw))**2 - 1) + 
-+                       abs(psi * (i(Lc) / V(Meas_Isw))**2 - 1)
-+                   ) / 2
-+               ) + {delta}
-+           )
-+       ),
-+       0
-+   ), 
++   V(N_enable) * ( (2 * sheet_resistance * vo / width_c) * 
++   (psi * V(N_ratio)**2 - 2) /
++   (max(V(N_sqrt_arg), 0) + {delta}) ),
 +   0, 
 +   V(N_c_state) < 0.5
 + )
@@ -227,7 +222,7 @@ B2 Meas_Isw 0
 
 * Replace 1 by 0.99 in B3 to improve stability in large circuits
 B3 Meas_Ihs 0 
-+ V = min(Ir , 1 * V(Meas_Isw))
++ V = min(Ir , 0.8 * V(Meas_Isw))
   * Retrapping current
 
 
