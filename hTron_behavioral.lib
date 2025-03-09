@@ -49,12 +49,12 @@
 + Ih_bias_on=747.2u
 *   width_c - Channel width (m)
 *   width_h - Heater width (m)
-*   thick_c - Channel thickness (m)
-*   length_c - Channel length (m)
-*   sheetRes - Sheet resistance (Ohms)
-*   R_h - Heater resistance (Ohms)
-*   Tc - Critical temperature (K)
-*   Tsub - Substrate temperature (K)
+*   const_thickness - Channel thickness (m)
+*   const_length - Channel length (m)
+*   sheet_resistance - Sheet resistance (Ohms)
+*   heater_resistance - Heater resistance (Ohms)
+*   critical_temp - Critical temperature (K)
+*   substrate_temp - Substrate temperature (K)
 *   eta - Efficiency factor (2 or 3)
 *   Jsw_tilde - Switching current density (y-intercept) (A/m^2)
 *   Isupp_tilde - Enable suppression current density (x-intercept)(A)
@@ -67,13 +67,13 @@
 ** PARAMETERS **
 **************************************************
 * Number of squares in superconducting channel
-.PARAM sq_c=length_c/width_c
+.PARAM sq_c=const_length/width_c
 
 * Normal state resistance
-.PARAM Rnorm_c = sheetRes*length_c/width_c
+.PARAM Rnorm_c = sheet_resistance*const_length/width_c
 
 * Resistivity (Ohm m)
-.PARAM rho = sheetRes*thick_c
+.PARAM rho = sheet_resistance*const_thickness
 
 * Thermal conductivity (W/m K)
 .PARAM kappa = 0.108
@@ -85,19 +85,19 @@
 .PARAM hc = 50k
 
 * Sheet inductance (pH/square)
-.PARAM inductivity = {1.38p*sheetRes/Tc}
+.PARAM inductivity = {1.38p*sheet_resistance/critical_temp}
 
 * Channel inductance (pH)
 .PARAM Lind_c = {inductivity*sq_c}
 
 * Characteristic velocity (m/s)
-.PARAM vo={1*sqrt(hc*kappa/thick_c)/heatCapacity_c}
+.PARAM vo={1*sqrt(hc*kappa/const_thickness)/heatCapacity_c}
 
 * Switching current at substrate temperature (A)
-.PARAM Isw_Tsub = Isw(Tsub)
+.PARAM Isw_Tsub = Isw(substrate_temp)
 
 * Stekly parameter (unitless)
-.PARAM psi = rho*(Isw_Tsub)**2/(hc*(width_c**2)*thick_c*(Tc-Tsub))
+.PARAM psi = rho*(Isw_Tsub)**2/(hc*(width_c**2)*const_thickness*(critical_temp-substrate_temp))
 
 * Retrapping current (A)
 .PARAM Ir = sqrt(2/psi)*Isw_Tsub
@@ -107,19 +107,19 @@
 .PARAM beta  = if(eta == 2, 1.25, 1.12)
 
 * Ideal critical current density => At 0K
-.PARAM Jc_0K = alpha * Jsw_tilde / (1 - (Tsub / Tc)**3)**2.1
+.PARAM Jc_0K = alpha * Jsw_tilde / (1 - (substrate_temp / critical_temp)**3)**2.1
   * Jsw(ih=0) is given by alpha * Jsw_tilde
 
 * Suppressing current
 .PARAM Ih_supp = beta * Isupp_tilde
 
 * Determine the nanowire temperature from the heater current
-.PARAM a = (Tc**4 - Tsub**4) / Ih_supp**eta
+.PARAM a = (critical_temp**4 - substrate_temp**4) / Ih_supp**eta
 
 * Temperature at which the channel switched (i.e at which Isw(Tch)=ICh_bias_on)
-.PARAM T_switch = Tc*(1-(ICh_bias_on/(Jc_0K*thick_c*width_c))**(1/2.1))**(1/3)
+.PARAM T_switch = critical_temp*(1-(ICh_bias_on/(Jc_0K*const_thickness*width_c))**(1/2.1))**(1/3)
 * Heater current needed to reach TCh = T_switch
-.PARAM Ih_switch = max(1p, ( (T_switch**4 - Tsub**4)/(Tc**4-Tsub**4))**(1/eta)*Ih_supp)
+.PARAM Ih_switch = max(1p, ( (T_switch**4 - substrate_temp**4)/(critical_temp**4-substrate_temp**4))**(1/eta)*Ih_supp)
 * RC time constant that makes the filtered heater current reach Ih_switch in time tau_on
 .PARAM tau_thermal = - tau_on/ln(1- (Ih_switch/Ih_bias_on) )
 
@@ -134,7 +134,7 @@
 ** HEATER SUBCIRCUIT **
 **************************************************
 * Heater resistor between the two ports
-R_heater heater_p heater_n {R_h}
+R_heater heater_p heater_n {heater_resistance}
   * Used to sense the heater current
 
 
@@ -200,11 +200,11 @@ C1 heat 0 {tau_thermal}
 **************************************************
 
 .func TCh(I) 
-+ (a * I**eta + Tsub**4) ** 0.25
++ (a * I**eta + substrate_temp**4) ** 0.25
 
 * Determine the switching current from the nanowire temperature
 .func Isw(T) 
-+ Jc_0K * width_c * thick_c * (1 - (T / Tc)**3) ** 2.1
++ Jc_0K * width_c * const_thickness * (1 - (T / critical_temp)**3) ** 2.1
 
 
 **************************************************
@@ -217,7 +217,7 @@ B1 Meas_TCh 0
   * Channel temperature
 
 B2 Meas_Isw 0 
-+ V = min(Jconstr * width_c * thick_c , Isw(V(Meas_TCh)))
++ V = min(Jconstr * width_c * const_thickness , Isw(V(Meas_TCh)))
   * Channel switching current, with the possibility of adding a constriction plateau
 
 * Replace 1 by 0.99 in B3 to improve stability in large circuits
