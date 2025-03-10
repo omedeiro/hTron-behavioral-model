@@ -67,7 +67,7 @@
 ** PARAMETERS **
 **************************************************
 * Number of squares in superconducting channel
-.PARAM sq_c=const_length/const_width
+.PARAM const_squares=const_length/const_width
 
 * Normal state resistance
 .PARAM Rnorm_c = sheet_resistance*const_length/const_width
@@ -88,7 +88,7 @@
 .PARAM inductivity = {1.38p*sheet_resistance/critical_temp}
 
 * Channel inductance (pH)
-.PARAM Lind_c = {inductivity*sq_c}
+.PARAM const_inductance = {inductivity*const_squares}
 
 * Characteristic velocity (m/s)
 .PARAM vo={1*sqrt(hc*kappa/const_thickness)/heatCapacity_c}
@@ -130,6 +130,7 @@
 * scaling factor for stability
 .PARAM scale=1e10
   
+.param Phi0=2.068e-15  ; Flux quantum (Wb)
 
 **************************************************
 ** HEATER SUBCIRCUIT **
@@ -170,7 +171,9 @@ B_c_state N_c_state 0
 R_enable N_enable 0 1G
 B_enable N_enable 0 V = if(V(N_c_state) & (V(N_c_hotspot) < Rnorm_c), 1, 0)
 
-BI_ratio N_ratio 0 V = i(Lc) / V(Meas_Isw)
+BI_safe_Lc safe_Lc 0 V = max(i(Lc), Phi0 / {const_inductance})
+BI_ratio N_ratio 0 V = V(safe_Lc) / V(Meas_Isw)
+
 B_sqrt_arg N_sqrt_arg 0 V = psi * V(N_ratio)**2 - 1
 B_sqrt_approx N_sqrt_approx 0 V = (V(N_sqrt_arg) + delta) / 2
 
@@ -214,7 +217,7 @@ C1 heat 0 {tau_thermal}
 
 * Used to get values of functions at every time point
 B1 Meas_TCh 0 
-+ V = TCh(V(heat))
++ V = min(Tc-1u, TCh(V(heat)))
   * Channel temperature
 
 B2 Meas_Isw 0 
@@ -232,7 +235,7 @@ B3 Meas_Ihs 0
 **************************************************
 
 Lc drain N_hs 
-+ Flux = {Lind_c} * x / (2.0 * cos(0.67 * asin(0.6 * abs(x) / Isw_Tsub)) - 1) 
++ Flux = {const_inductance} * x / (2.0 * cos(0.67 * asin(0.6 * abs(x) / Isw_Tsub)) - 1) 
 + Rser = 1e-100 
 + Rpar = 1e6
   * Channel inductor
