@@ -37,16 +37,16 @@
 **************************************************
 ** PARAMETERS AND MODEL DEFINITION **
 **************************************************
-
 .subckt hTron_behav heater_p heater_n drain source Meas_TCh Meas_Isw Meas_Ihs
-+ const_width=1u              heater_width=0.5u      
-+ const_thickness=23.6n       const_length=14u      
-+ sheet_resistance=77.9       heater_resistance=50  
-+ critical_temp=12.5          substrate_temp=4.2    
-+ eta=3                       Jsw_tilde=70G         
-+ Isupp_tilde=1024u           Jconstr=100G          
-+ tau_on=7.74n                ICh_bias_on=827.8u    
++ const_width=1u            heater_width=0.5u      
++ const_thickness=23.6n      const_length=14u      
++ sheet_resistance=77.9      heater_resistance=50  
++ critical_temp=12.5         substrate_temp=4.2    
++ eta=3                     Jsw_tilde=70G         
++ Isupp_tilde=1024u         Jconstr=100G          
++ tau_on=7.74n              ICh_bias_on=827.8u    
 + Ih_bias_on=747.2u
+
 *   const_width - Channel width (m)
 *   heater_width - Heater width (m)
 *   const_thickness - Channel thickness (m)
@@ -111,7 +111,8 @@
   * Jsw(ih=0) is given by alpha * Jsw_tilde
 
 * Suppressing current
-.PARAM Ih_supp = beta * Isupp_tilde
+* .PARAM Ih_supp = beta * Isupp_tilde
+.PARAM Ih_supp = Isupp_tilde
 
 * Determine the nanowire temperature from the heater current
 .PARAM a = (critical_temp**4 - substrate_temp**4) / Ih_supp**eta
@@ -124,7 +125,7 @@
 .PARAM tau_thermal = - tau_on/ln(1- (Ih_switch/Ih_bias_on) )
 
 * a small offset for stability
-.PARAM delta=0.01
+.PARAM delta=1u
   
 * scaling factor for stability
 .PARAM scale=1e10
@@ -222,7 +223,7 @@ B2 Meas_Isw 0
 
 * Replace 1 by 0.99 in B3 to improve stability in large circuits
 B3 Meas_Ihs 0 
-+ V = min(Ir , 0.8 * V(Meas_Isw))
++ V = min(Ir , 0.99 * V(Meas_Isw))
   * Retrapping current
 
 
