@@ -70,7 +70,7 @@
 .PARAM const_squares=const_length/const_width
 
 * Normal state resistance
-.PARAM Rnorm_c = sheet_resistance*const_length/const_width
+.PARAM const_resistance = sheet_resistance*const_length/const_width
 
 * Resistivity (Ohm m)
 .PARAM rho = sheet_resistance*const_thickness
@@ -149,7 +149,7 @@ BI_safe_Lc const_current 0 V = sgn(i(Lc)) * max(abs(i(Lc)), Phi0 / {const_induct
 
 B_c_Isw_state N_c_Isw_state 0
 + V = stp(
-+     abs(const_current) * scale
++     abs(V(const_current)) * scale
 +     - V(Meas_Isw) * scale
 + )
 
@@ -158,7 +158,7 @@ B_c_state N_c_state 0
 + V = buf(
 +     V(N_c_Isw_state) 
 +     | 
-+     ((V(N_c_hotspot) > 0) 
++     ((V(N_hotspot_resistance) > 0) 
 +     & 
 +     stp(
 +         abs(i(Lc)) * scale 
@@ -170,16 +170,16 @@ B_c_state N_c_state 0
 ** HOTSPOT GROWTH INTEGRATOR SUBCIRCUIT **
 **************************************************
 R_enable N_enable 0 1G
-B_enable N_enable 0 V = if(V(N_c_state) & (V(N_c_hotspot) < Rnorm_c), 1, 0)
+B_enable N_enable 0 V = if(V(N_c_state) & (V(N_hotspot_resistance) < const_resistance), 1, 0)
 
-BI_ratio N_ratio 0 V = V(const_current) / V(Meas_Isw)
+BI_ratio N_norm_current 0 V = V(const_current) / V(Meas_Isw)
 
-B_sqrt_arg N_sqrt_arg 0 V = psi * V(N_ratio)**2 - 1
+B_sqrt_arg N_sqrt_arg 0 V = psi * V(N_norm_current)**2 - 1
 B_sqrt_approx N_sqrt_approx 0 V = (V(N_sqrt_arg) + delta) / 2
 
-B_c_hotspot N_c_hotspot 0 V = sdt(
+B_c_hotspot N_hotspot_resistance 0 V = sdt(
 +   V(N_enable) * ( (2 * sheet_resistance * vo / const_width) * 
-+   (psi * V(N_ratio)**2 - 2) /
++   (psi * V(N_norm_current)**2 - 2) /
 +   (max(V(N_sqrt_arg), 0) + {delta}) ),
 +   0, 
 +   V(N_c_state) < 0.5
@@ -241,7 +241,7 @@ Lc drain N_hs
   * Channel inductor
 
 B_Rhs N_hs source 
-+ V = V(N_c_hotspot) * i(B_Rhs)
++ V = V(N_hotspot_resistance) * i(B_Rhs)
   * V(N_c_hotspot) is the hotspot resistance
 
 
