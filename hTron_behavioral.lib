@@ -42,8 +42,8 @@
 + chan_thickness=24n      chan_length=14u      
 + sheet_resistance=78      heater_resistance=50  
 + critical_temp=12.5         substrate_temp=4.2    
-+ eta=3                     Jsw_tilde=70G         
-+ Isupp_tilde=500u         Jchanr=100G          
++ eta=3                     Jsw_tilde=100G         
++ Isupp_tilde=500u         Jchanr=70G          
 + tau_on=5n              ICh_bias_on=800u    
 + Ih_bias_on=400u
 
