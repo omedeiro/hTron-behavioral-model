@@ -1,0 +1,10 @@
+I1 0 N001 PWL(0 0 1n {I_heater})
+I2 0 out PWL(0 0 100u {max_channel_bias} 200u 0)
+X§U1 N001 0 out 0 NC_01 NC_02 NC_03 hTron_behav
+.tran 0 200u 0 10n
+.options reltol 1e-6
+.param max_channel_bias=2000u
+.step param I_heater 00u 500u 100u
+.lib hTron_behavioral.lib
+.backanno
+.end
